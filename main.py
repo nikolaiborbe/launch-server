@@ -32,17 +32,27 @@ env = Environment(
     date=(2025, 6, 8, 12, 0, 0)
 )
 
-# Define motor using a local thrust curve CSV
+# Define motor using inline thrust curve data
+# Simple inline thrust curve: list of [time (s), thrust (N)]
+thrust_data = [
+    [0.0, 0.0],
+    [0.5, 500.0],
+    [1.0, 1000.0],
+    [2.0, 2000.0],
+    [3.0, 1500.0],
+    [4.0, 1000.0],
+    [5.0, 0.0]
+]
 motor = SolidMotor(
-    thrustSource="path/to/thrust_curve.csv",  # replace with your CSV path
-    burnOut=5,
-    grainNumber=5,
-    grainSeparation=5e-3,
-    grainDensity=1800,
-    grainOuterRadius=0.075,
-    grainInitialInnerRadius=0.035,
-    grainInitialHeight=0.230,
-    nozzleRadius=0.05
+    thrust_source=thrust_data,
+    burn_time=5,
+    grain_number=5,
+    grain_separation=5e-3,
+    grain_density=1800,
+    grain_outer_radius=0.075,
+    grain_initial_inner_radius=0.035,
+    grain_initial_height=0.230,
+    nozzle_radius=0.05
 )
 
 # Define rocket geometry and mass properties
