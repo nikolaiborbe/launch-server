@@ -4,6 +4,8 @@ from rocketpy import Flight
 import random
 from contextlib import asynccontextmanager
 
+from rocket import get_rocket
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Kick off the continuous simulation loop as soon as the app starts
@@ -20,12 +22,14 @@ state = {
     "wind": None
 }
 
+rocket = get_rocket()
+
 async def simulate_loop():
     t = 0
     while True:
         # Dummy simulation data (replace with real Flight call later)
-        state["landing"]["x"] = t * 10
-        state["landing"]["y"] = t * 5
+        state["landing"]["x"] = t + 1
+        state["landing"]["y"] = t * 2
         state["max_altitude"]   = 100 + t * 20
         state["max_speed"]      = 50 + t * 2
         state["wind"]           = random.uniform(0, 10)

@@ -20,3 +20,6 @@ header = df.iloc[1]
 
 headers = df.iloc[0].values
 df.columns = headers
+
+def get_rocket() -> Flight:
+    
