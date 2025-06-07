@@ -27,7 +27,6 @@ state = {
 # --- RocketPy simulation setup ---
 # Initialize environment at launch coordinates and date
 env = Environment(
-    railLength=5,
     latitude=63.80263794391954,
     longitude=9.413957500356199,
     date=(2025, 6, 8, 12, 0, 0)
@@ -56,7 +55,7 @@ rocket = Rocket(
 )
 
 # Create and run the flight simulation
-flight = Flight(rocket=rocket, environment=env, inclination=90, heading=0)
+flight = Flight(rocket=rocket, environment=env, rail_length=5, inclination=90, heading=0)
 flight.run()
 
 # Extract trajectory and performance data
