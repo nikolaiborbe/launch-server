@@ -2,8 +2,15 @@ import asyncio
 from fastapi import FastAPI
 from rocketpy import Flight
 import random
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Kick off the continuous simulation loop as soon as the app starts
+    asyncio.create_task(simulate_loop())
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 # Shared state: updated once per second by the background task
 state = {
@@ -26,10 +33,6 @@ async def simulate_loop():
         t += 1
         await asyncio.sleep(1)
 
-@app.on_event("startup")
-async def start_simulation():
-    # Kick off the continuous simulation loop as soon as the app starts
-    asyncio.create_task(simulate_loop())
 
 @app.get("/")
 def root():
@@ -41,3 +44,7 @@ def root():
 def get_status():
     # Clients call this once per second (or however often you like)
     return state
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
