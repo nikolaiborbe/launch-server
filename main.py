@@ -4,6 +4,8 @@ from rocketpy import Flight
 import random
 from contextlib import asynccontextmanager
 
+from rocketpy import Environment, SolidMotor, Rocket, Flight
+
 #from rocket import get_rocket
 
 @asynccontextmanager
@@ -22,19 +24,62 @@ state = {
     "wind": None
 }
 
+# --- RocketPy simulation setup ---
+# Initialize environment at launch coordinates and date
+env = Environment(
+    railLength=5,
+    latitude=63.80263794391954,
+    longitude=9.413957500356199,
+    date=(2025, 6, 8, 12, 0, 0)
+)
+
+# Define motor using a local thrust curve CSV
+motor = SolidMotor(
+    thrustSource="path/to/thrust_curve.csv",  # replace with your CSV path
+    burnOut=5,
+    grainNumber=5,
+    grainSeparation=5e-3,
+    grainDensity=1800,
+    grainOuterRadius=0.075,
+    grainInitialInnerRadius=0.035,
+    grainInitialHeight=0.230,
+    nozzleRadius=0.05
+)
+
+# Define rocket geometry and mass properties
+rocket = Rocket(
+    motor=motor,
+    radius=0.1,
+    mass=19.7,
+    inertiaI=0.1,
+    inertiaZ=0.1
+)
+
+# Create and run the flight simulation
+flight = Flight(rocket=rocket, environment=env, inclination=90, heading=0)
+flight.run()
+
+# Extract trajectory and performance data
+times = flight.all_info["t"]
+x_data = flight.all_info["x"]
+z_data = flight.all_info["z"]     # altitude
+v_data = flight.all_info["v"]     # speed
+flight_index = 0
+# ----------------------------------
+
 #rocket = get_rocket()
 
 async def simulate_loop():
-    t = 0
+    global flight_index
     while True:
-        # Dummy simulation data (replace with real Flight call later)
-        state["landing"]["x"] = t + 1
-        state["landing"]["y"] = t * 2
-        state["max_altitude"]   = 100 + t * 20
-        state["max_speed"]      = 50 + t * 2
-        state["wind"]           = random.uniform(0, 10)
-
-        t += 1
+        if flight_index < len(times):
+            # Update position and performance up to this time-step
+            state["landing"]["x"] = x_data[flight_index]
+            state["landing"]["y"] = z_data[flight_index]
+            state["max_altitude"] = max(z_data[:flight_index+1])
+            state["max_speed"] = max(v_data[:flight_index+1])
+            state["wind"] = random.uniform(0, 10)
+            flight_index += 1
         await asyncio.sleep(1)
 
 
