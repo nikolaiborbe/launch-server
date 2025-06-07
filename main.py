@@ -4,7 +4,7 @@ from rocketpy import Flight
 import random
 from contextlib import asynccontextmanager
 
-from rocket import get_rocket
+#from rocket import get_rocket
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,7 +22,7 @@ state = {
     "wind": None
 }
 
-rocket = get_rocket()
+#rocket = get_rocket()
 
 async def simulate_loop():
     t = 0
