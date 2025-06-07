@@ -23,4 +23,4 @@ USER appuser
 EXPOSE 8000
 
 # 8) Define entrypoint
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--app-dir", "launch-server", "--host", "0.0.0.0", "--port", "10000", "--reload"]
