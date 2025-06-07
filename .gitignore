@@ -1,1 +1,3 @@
 rocketpy-2025/
+.mypy_cache/
+__pycache__/
