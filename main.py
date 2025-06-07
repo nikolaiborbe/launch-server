@@ -1,15 +1,43 @@
+import asyncio
 from fastapi import FastAPI
-import time
+from rocketpy import Flight
+import random
 
 app = FastAPI()
 
+# Shared state: updated once per second by the background task
+state = {
+    "landing": {"x": None, "y": None},
+    "max_altitude": None,
+    "max_speed": None,
+    "wind": None
+}
+
+async def simulate_loop():
+    t = 0
+    while True:
+        # Dummy simulation data (replace with real Flight call later)
+        state["landing"]["x"] = t * 10
+        state["landing"]["y"] = t * 5
+        state["max_altitude"]   = 100 + t * 20
+        state["max_speed"]      = 50 + t * 2
+        state["wind"]           = random.uniform(0, 10)
+
+        t += 1
+        await asyncio.sleep(1)
+
+@app.on_event("startup")
+async def start_simulation():
+    # Kick off the continuous simulation loop as soon as the app starts
+    asyncio.create_task(simulate_loop())
+
 @app.get("/")
 def root():
-    return {"message": "Welcome to the counter API. Use /count to retrieve the current count."}
+    return {
+        "message": "Rocket simulation API. Use GET /status to fetch current metrics."
+    }
 
-_start = time.time()
-
-@app.get("/count")
-def read_count():
-    # Number of whole seconds since startup
-    return {"count": int(time.time() - _start)}
+@app.get("/status")
+def get_status():
+    # Clients call this once per second (or however often you like)
+    return state
