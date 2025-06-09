@@ -23,7 +23,7 @@ class API:
     weather: Weather
 # Shared state: updated once per second by the background task
 state = API(
-    data=Data(0, 0, 0, 0, 0, 0),
+    data=Data(0, 0, 0, 0, 0, 0, 0, 0),
     weather=Weather(0, 0, 0, 0, 0)
 )
 

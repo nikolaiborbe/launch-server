@@ -23,6 +23,8 @@ class Data:
     max_velocity: float
     apogee_time: float
     apogee_altitude: float
+    apogee_x: float
+    apogee_y: float
     impact_x: float
     impact_y: float
     impact_velocity: float
@@ -357,7 +359,7 @@ def worker() -> list[Data, Weather]:
     }
 
 
-    res = Data(result["max_velocity"], result["apogee_time"], result["apogee_altitude"], result["impact_x"], result["impact_y"], result["impact_velocity"])
+    res = Data(result["max_velocity"], result["apogee_time"], result["apogee_altitude"], result["apogee_x"], result["apogee_y"], result["impact_x"], result["impact_y"], result["impact_velocity"])
 
     wind_direction = format_wind_direction(weather["wind_from_direction"])
 
