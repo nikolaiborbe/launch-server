@@ -43,6 +43,7 @@ if response.status_code != 200:
 
 # Konverter responsen til JSON
 data = response.json()
+print(data)
 
 # Sjekk at vi har fått data
 if "data" not in data:

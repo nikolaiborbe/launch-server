@@ -1,10 +1,8 @@
 import asyncio
 from fastapi import FastAPI
-from rocketpy import Flight
 import random
 from contextlib import asynccontextmanager
-
-from rocketpy import Environment, SolidMotor, Rocket, Flight
+from sim import Data, get_data
 
 #from rocket import get_rocket
 
@@ -17,78 +15,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Shared state: updated once per second by the background task
-state = {
-    "landing": {"x": None, "y": None},
-    "max_altitude": None,
-    "max_speed": None,
-    "wind": None
-}
+state: Data = Data(0,0,0,0,0,0)
 
-# --- RocketPy simulation setup ---
-# Initialize environment at launch coordinates and date
-env = Environment(
-    latitude=63.80263794391954,
-    longitude=9.413957500356199,
-    date=(2025, 6, 8, 12, 0, 0)
-)
-
-# Define motor using inline thrust curve data
-# Simple inline thrust curve: list of [time (s), thrust (N)]
-thrust_data = [
-    [0.0, 0.0],
-    [0.5, 500.0],
-    [1.0, 1000.0],
-    [2.0, 2000.0],
-    [3.0, 1500.0],
-    [4.0, 1000.0],
-    [5.0, 0.0]
-]
-motor = SolidMotor(
-    thrust_source=thrust_data,
-    burn_time=5,
-    grain_number=5,
-    grain_separation=5e-3,
-    grain_density=1800,
-    grain_outer_radius=0.075,
-    grain_initial_inner_radius=0.035,
-    grain_initial_height=0.230,
-    nozzle_radius=0.05
-)
-
-# Define rocket geometry and mass properties
-rocket = Rocket(
-    motor=motor,
-    radius=0.1,
-    mass=19.7,
-    inertiaI=0.1,
-    inertiaZ=0.1
-)
-
-# Create and run the flight simulation
-flight = Flight(rocket=rocket, environment=env, rail_length=5, inclination=90, heading=0)
-flight.run()
-
-# Extract trajectory and performance data
-times = flight.all_info["t"]
-x_data = flight.all_info["x"]
-z_data = flight.all_info["z"]     # altitude
-v_data = flight.all_info["v"]     # speed
-flight_index = 0
-# ----------------------------------
-
-#rocket = get_rocket()
 
 async def simulate_loop():
     global flight_index
     while True:
-        if flight_index < len(times):
-            # Update position and performance up to this time-step
-            state["landing"]["x"] = x_data[flight_index]
-            state["landing"]["y"] = z_data[flight_index]
-            state["max_altitude"] = max(z_data[:flight_index+1])
-            state["max_speed"] = max(v_data[:flight_index+1])
-            state["wind"] = random.uniform(0, 10)
-            flight_index += 1
+        global state
+        state = get_data()
         await asyncio.sleep(1)
 
 
