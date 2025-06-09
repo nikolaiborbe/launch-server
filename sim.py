@@ -353,7 +353,7 @@ def worker() -> list[Data, Weather]:
         temperature=weather["air_temperature"],
         pressure=weather["air_pressure_at_sea_level"],
         wind_speed=weather["wind_speed"],
-        wind_direction=weather["wind_direction"],
+        wind_direction=weather["wind_from_direction"],
         humidity=weather["relative_humidity"],
     )
     print(weather)
