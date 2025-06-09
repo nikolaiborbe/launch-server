@@ -109,6 +109,15 @@ def drogue_trigger(p, h, y): return y[5] < 0
 
 def main_trigger(p, h, y): return y[5] < 0 and h <= 500
 
+def coords_to_meters(lat, lon):
+    """Convert latitude and longitude to meters."""
+    R = 6371000  # Radius of the Earth in meters
+    lat_rad = np.deg2rad(lat)
+    lon_rad = np.deg2rad(lon)
+    x = R * lon_rad * np.cos(lat_rad)
+    y = R * lat_rad
+    return x, y
+
 def worker() -> list[Data, Weather]:
     today = datetime.datetime.now(ZoneInfo("Europe/Oslo"))
     Env, weather = construct_environment(
@@ -357,6 +366,7 @@ def worker() -> list[Data, Weather]:
         humidity=weather["relative_humidity"],
     )
     print(weather)
+    #after_landing = 
     return [res, weather]
 
 
