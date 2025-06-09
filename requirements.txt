@@ -1,3 +1,7 @@
 fastapi
 rocketpy
+numpy
+pyfluids
+openpyxl
+zoneinfo
 uvicorn[standard]
