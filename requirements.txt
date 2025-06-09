@@ -2,6 +2,10 @@ fastapi
 rocketpy
 numpy
 pyfluids
+pandas
 openpyxl
+warnings
+requests
+xarray
 zoneinfo
 uvicorn[standard]
