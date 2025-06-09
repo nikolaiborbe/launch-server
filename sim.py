@@ -34,7 +34,7 @@ class Weather:
     temperature: float
     pressure: float
     wind_speed: float
-    wind_direction: int
+    wind_direction: float
     humidity: float
     
 
