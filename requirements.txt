@@ -4,8 +4,6 @@ numpy
 pyfluids
 pandas
 openpyxl
-warnings
-requests
-xarray
+txarray
 zoneinfo
 uvicorn[standard]
