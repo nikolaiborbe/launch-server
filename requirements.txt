@@ -3,4 +3,5 @@ rocketpy
 numpy
 pyfluids
 pandas
+xarray
 uvicorn[standard]
