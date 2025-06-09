@@ -3,7 +3,5 @@ rocketpy
 numpy
 pyfluids
 pandas
-openpyxl
 txarray
-zoneinfo
 uvicorn[standard]
