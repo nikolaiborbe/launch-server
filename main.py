@@ -1,6 +1,5 @@
 import asyncio
 from dataclasses import dataclass
-from tkinter import W
 from fastapi import FastAPI
 import random
 from contextlib import asynccontextmanager
