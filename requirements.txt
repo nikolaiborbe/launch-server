@@ -4,4 +4,5 @@ numpy
 pyfluids
 pandas
 xarray
+openpyxl
 uvicorn[standard]
