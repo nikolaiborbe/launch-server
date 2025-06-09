@@ -1,8 +1,11 @@
 import asyncio
+from dataclasses import dataclass
+from tkinter import W
 from fastapi import FastAPI
 import random
 from contextlib import asynccontextmanager
-from sim import Data, get_data
+from sim import Data, Weather, get_data
+
 
 #from rocket import get_rocket
 
@@ -14,15 +17,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Shared state: updated once per second by the background task
-state: Data = Data(0,0,0,0,0,0)
 
+@dataclass
+class API:
+    data: Data
+    weather: Weather
+# Shared state: updated once per second by the background task
+state = API(
+    data=Data(0, 0, 0, 0, 0, 0),
+    weather=Weather(0, 0, 0, 0, 0)
+)
 
 async def simulate_loop():
     global flight_index
     while True:
         global state
         state = get_data()
+        print(state)
         await asyncio.sleep(1)
 
 

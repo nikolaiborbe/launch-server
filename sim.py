@@ -26,7 +26,27 @@ class Data:
     impact_x: float
     impact_y: float
     impact_velocity: float
+
+@dataclass
+class Weather:
+    temperature: float
+    pressure: float
+    wind_speed: float
+    wind_direction: str
+    humidity: float
     
+
+def format_wind_direction(wind_direction_from:float) -> str:
+    """
+    Format wind direction from degrees to a string.
+    """
+    if wind_direction_from < 0 or wind_direction_from > 360:
+        raise ValueError("Wind direction must be between 0 and 360 degrees.")
+    
+    # Convert to compass direction
+    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    index = int((wind_direction_from + 22.5) // 45) % 8
+    return directions[index]
 
 df = pd.read_excel("Input_values.xlsx", index_col=1)
 header = df.iloc[1]
@@ -99,9 +119,9 @@ def drogue_trigger(p, h, y): return y[5] < 0
 
 def main_trigger(p, h, y): return y[5] < 0 and h <= 500
 
-def worker() -> Data:
+def worker() -> list[Data, Weather]:
     today = datetime.datetime.now(ZoneInfo("Europe/Oslo"))
-    Env = construct_environment(
+    Env, weather = construct_environment(
         lat=df.loc["latitude"][1],
         lon=df.loc["longitude"][1],
         launch_time=today,
@@ -338,12 +358,23 @@ def worker() -> Data:
 
 
     res = Data(result["max_velocity"], result["apogee_time"], result["apogee_altitude"], result["impact_x"], result["impact_y"], result["impact_velocity"])
-    return res
+
+    wind_direction = format_wind_direction(weather["wind_from_direction"])
+
+    weather = Weather(
+        temperature=weather["air_temperature"],
+        pressure=weather["air_pressure_at_sea_level"],
+        wind_speed=weather["wind_speed"],
+        wind_direction=wind_direction,
+        humidity=weather["relative_humidity"],
+    )
+    print(weather)
+    return [res, weather]
 
 
 
         
-def get_data() -> Data:
+def get_data() -> list[Data, Weather]:
     return worker()
 
 if __name__ == "__main__": 

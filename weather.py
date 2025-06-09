@@ -137,7 +137,7 @@ def construct_environment(
         wind_v      = wind_v_profile
     )
 
-    return env
+    return env, current_obs
 
 
 
@@ -146,8 +146,9 @@ if __name__ == "__main__":
     lat, lon = 63.43, 10.3951
     # 1) fetch obs + forecast
     # 2) build a tz-aware datetime for “now”
-    now = datetime.astimezone(ZoneInfo("Europe/Oslo"))
+    now = datetime.now()
     # 3) construct Env
-    env = construct_environment(lat, lon, now, "inputs/MC_env.nc")
+    env, weather = construct_environment(lat, lon, now, "inputs/MC_env.nc")
+    print(weather)
     # 4) inspect
     env.plots.atmospheric_model()
