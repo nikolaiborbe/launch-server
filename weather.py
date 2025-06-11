@@ -29,7 +29,11 @@ def select_forecasts(lat: float, lon: float, *, timeout=10) -> list[Weather]:
     timeseries.sort(key=ts_dt)
     now_utc = datetime.now(ZoneInfo("UTC"))
 
-    current = max((ts for ts in timeseries if ts_dt(ts) <= now_utc), key=ts_dt)
+    current = max(
+        (ts for ts in timeseries if ts_dt(ts) <= now_utc),
+        key=ts_dt,
+        default=timeseries[0],
+    )
     first_after = lambda moment: next(ts for ts in timeseries if ts_dt(ts) >= moment)
 
     plus1 = first_after(now_utc + timedelta(hours=1))
