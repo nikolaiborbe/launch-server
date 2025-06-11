@@ -263,6 +263,7 @@ def worker(env: Environment) -> Data:
     thrust_curve[2, 0] = burnout_time - 0.5
     thrust_curve[3, 0] = burnout_time
 
+    # array no longer needed once motor is constructed
     # Motor
     motor = LiquidMotor(
         thrust_source=thrust_curve,
@@ -274,6 +275,8 @@ def worker(env: Environment) -> Data:
         nozzle_position=0,
         coordinate_system_orientation="nozzle_to_combustion_chamber",
     )
+    # array no longer needed once motor is constructed
+    del thrust_curve
     motor.add_tank(fuel_tank, position=analysis_parameters["fuel_tank_position"])
     motor.add_tank(ox_tank, position=analysis_parameters["ox_tank_position"])
     motor.add_tank(n2_tank, position=analysis_parameters["n2_tank_position"])
@@ -362,12 +365,24 @@ def worker(env: Environment) -> Data:
         "final_static_margin":    final_sm,
     }
 
-    t = np.arange(0, flight.t_final, 0.5).tolist()
-    coords = np.column_stack([
-        flight.x(t),
-        flight.y(t),
-        flight.z(t)
-    ]).tolist()
+    # --------------------------------------------------------------
+    # Store at most one point per second and cast to float32 to cut
+    # memory in half while preserving ~1 m resolution.
+    # --------------------------------------------------------------
+    t_arr = np.arange(0, flight.t_final, 1.0, dtype=np.float32)
+    coords_arr = np.column_stack([
+        flight.x(t_arr),
+        flight.y(t_arr),
+        flight.z(t_arr)
+    ]).astype(np.float32)
+
+    # Convert to built‑in Python types only at the very end
+    # (RocketPy returns numpy arrays anyway).
+    t = t_arr.tolist()
+    coords = coords_arr.tolist()
+
+    # The intermediate float32 arrays are small; free them now.
+    del t_arr, coords_arr
 
     flight_data = FlightData(t, coords)
 
@@ -377,7 +392,7 @@ def worker(env: Environment) -> Data:
     # Free large intermediate objects so their memory can be returned
     # before the next iteration; this helps keep RSS flat over time.
     # --------------------------------------------------------------
-    del flight, heimdal, motor, fuel_tank, ox_tank, n2_tank
+    del flight, heimdal, motor, fuel_tank, ox_tank, n2_tank, t, coords, flight_data
     gc.collect()
 
     return res
