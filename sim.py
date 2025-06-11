@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import time
 import zoneinfo
 import pandas as pd
 import numpy as np
@@ -6,6 +7,7 @@ import datetime
 from rocketpy import Environment, Rocket, Flight, LiquidMotor, CylindricalTank, MassFlowRateBasedTank, Fluid as RPFluid
 from pyfluids import FluidsList, Mixture, Input, Fluid as PyFluid
 from zoneinfo import ZoneInfo
+from models import Day, Data, Weather
 import os
 import contextlib
 import csv
@@ -18,24 +20,6 @@ import warnings
 # ignore all FutureWarning messages
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-@dataclass
-class Data:
-    max_velocity: float
-    apogee_time: float
-    apogee_altitude: float
-    apogee_x: float
-    apogee_y: float
-    impact_x: float
-    impact_y: float
-    impact_velocity: float
-
-@dataclass
-class Weather:
-    temperature: float
-    pressure: float
-    wind_speed: float
-    wind_direction: float
-    humidity: float
     
 
 df = pd.read_excel("Input_values.xlsx", index_col=1)
@@ -118,14 +102,8 @@ def coords_to_meters(lat, lon):
     y = R * lat_rad
     return x, y
 
-def worker() -> list[Data, Weather]:
+def worker(env: Environment) -> Data:
     today = datetime.datetime.now(ZoneInfo("Europe/Oslo"))
-    Env, weather = construct_environment(
-        lat=df.loc["latitude"][1],
-        lon=df.loc["longitude"][1],
-        launch_time=today,
-        climatology_file="inputs/MC_env.nc")
-
 
     fuel_T = 20
     ambient_T = 20
@@ -307,7 +285,7 @@ def worker() -> list[Data, Weather]:
     # Flight
     flight = Flight(
         rocket = heimdal,
-        environment = Env,
+        environment = env,
         rail_length = analysis_parameters["rail_length"],
         inclination = analysis_parameters["inclination"],
         heading = analysis_parameters["heading"],
@@ -358,23 +336,31 @@ def worker() -> list[Data, Weather]:
 
     res = Data(result["max_velocity"], result["apogee_time"], result["apogee_altitude"], result["apogee_x"], result["apogee_y"], result["impact_x"], result["impact_y"], result["impact_velocity"])
 
-    weather = Weather(
-        temperature=weather["air_temperature"],
-        pressure=weather["air_pressure_at_sea_level"],
-        wind_speed=weather["wind_speed"],
-        wind_direction=weather["wind_from_direction"],
-        humidity=weather["relative_humidity"],
+    return res
+
+
+
+def get_data() -> list[Day]:
+    ans = []
+    env, weather = construct_environment(
+        lat=df.loc["latitude"][1],
+        lon=df.loc["longitude"][1],
+        launch_time=datetime.datetime.now(ZoneInfo("Europe/Oslo")),
+        climatology_file="inputs/MC_env.nc"
     )
-    print(weather)
-    #after_landing = 
-    return [res, weather]
-
-
-
-        
-def get_data() -> list[Data, Weather]:
-    return worker()
+    for i in range(len(weather)): 
+        data: Data  = worker(env[i])
+        cur_weather: Weather = Weather(
+            time=weather[i].time,
+            temperature=weather[i].temperature,
+            pressure=weather[i].pressure,
+            wind_speed=weather[i].wind_speed,
+            wind_from_direction=weather[i].wind_from_direction,
+            humidity=weather[i].humidity,
+        )
+        day: Day = Day(data, cur_weather)
+        ans.append(day)
+    return ans 
 
 if __name__ == "__main__": 
-    result = worker()
-    print(result)
+    pass

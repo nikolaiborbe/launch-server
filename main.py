@@ -1,9 +1,11 @@
 import asyncio
 from dataclasses import dataclass
+from urllib import response
 from fastapi import FastAPI
 import random
 from contextlib import asynccontextmanager
-from sim import Data, Weather, get_data
+from sim import get_data
+from models import Day, Data, Weather
 
 
 #from rocket import get_rocket
@@ -17,22 +19,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@dataclass
-class API:
-    data: Data
-    weather: Weather
 # Shared state: updated once per second by the background task
-state = API(
-    data=Data(0, 0, 0, 0, 0, 0, 0, 0),
-    weather=Weather(0, 0, 0, 0, 0)
-)
+state: list[Day] = []
 
 async def simulate_loop():
-    global flight_index
+    global state
     while True:
-        global state
         state = get_data()
-        print(state)
         await asyncio.sleep(1)
 
 
@@ -42,7 +35,7 @@ def root():
         "message": "Rocket simulation API. Use GET /status to fetch current metrics."
     }
 
-@app.get("/status")
+@app.get("/status", response_model=list[Day])
 def get_status():
     # Clients call this once per second (or however often you like)
     return state
