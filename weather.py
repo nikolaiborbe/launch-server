@@ -101,20 +101,14 @@ def construct_environment(
     # same arrays (height, pressure, base‑temperature) in each loop
     # iteration.  This saves both CPU and per‑request memory.
     # ------------------------------------------------------------------
-    clim = ds.sel(
-        time      = ts,
-        latitude  = lat,
-        longitude = lon,
-        method    = "nearest"
-    )
+    # Use float32 to halve memory footprint; precision is ±0.01 Pa / m, ample.
+    levels_hpa   = clim["level"].values.astype(np.float32)   # [hPa]
+    pressure_pa  = (levels_hpa * 100.0).astype(np.float32)   # → Pa
 
-    levels_hpa   = clim["level"].values            # [hPa]
-    pressure_pa  = levels_hpa * 100.0              # → Pa
+    geopot       = clim["z"].values.astype(np.float32)       # m²/s²
+    height       = (geopot / g).astype(np.float32)           # m
 
-    geopot       = clim["z"].values                # m²/s²
-    height       = (geopot / g).astype(float)      # m
-
-    T_profile_base = clim["t"].values              # K (climatology)
+    T_profile_base = clim["t"].values.astype(np.float32)      # K (climatology)
 
     # Pressure profile is invariant across weather_list entries
     pressure_profile = [
@@ -129,17 +123,16 @@ def construct_environment(
 
         # --- reuse the pre‑computed climatology slice ---
         T_profile = T_profile_base
-        u_profile = clim["u"].values  # still varies with time? kept for completeness
-        v_profile = clim["v"].values
 
         # --- apply surface‐temp anomaly (MET in °C → K) ---
         T_obs_K      = T_obs + 273.15
         T_surf_clim  = np.interp(0.0, height, T_profile)
         delta_T      = T_obs_K - T_surf_clim
+        temp_arr = (T_profile_base + delta_T).astype(np.float32)
         temperature_profile = [
-            (float(h), float(Ti + delta_T))
-            for h, Ti in zip(height, T_profile)
+            (float(h), float(Ti)) for h, Ti in zip(height, temp_arr)
         ]
+        del temp_arr  # free immediately
 
         # --- build constant wind profiles from the obs ---
         θ     = np.deg2rad(wdir)
