@@ -86,10 +86,14 @@ def construct_environment(
     # --- fetch the current MET surface obs ---
     weather_list: list[Weather] = select_forecasts(lat, lon)
     env_list = []
-
-    # Load the climatology dataset only once instead of once per forecast.
+    
+    # Load the climatology dataset only once (cached internally by _get_dataset)
     ds = _get_dataset(climatology_file)
-    ts = np.datetime64(launch_time.astimezone(ZoneInfo("UTC")))
+
+    # numpy.datetime64 doesn't carry tz info.  Convert to UTC, drop tz,
+    # then build the timestamp to avoid the warning.
+    ts_utc = launch_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+    ts = np.datetime64(ts_utc)
 
     for w in weather_list:
         T_obs   = w.temperature      # °C
