@@ -101,6 +101,12 @@ def construct_environment(
     # same arrays (height, pressure, base‑temperature) in each loop
     # iteration.  This saves both CPU and per‑request memory.
     # ------------------------------------------------------------------
+    clim = ds.sel(
+        time      = ts,
+        latitude  = lat,
+        longitude = lon,
+        method    = "nearest"
+    )
     # Use float32 to halve memory footprint; precision is ±0.01 Pa / m, ample.
     levels_hpa   = clim["level"].values.astype(np.float32)   # [hPa]
     pressure_pa  = (levels_hpa * 100.0).astype(np.float32)   # → Pa
