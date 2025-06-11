@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 from sim import get_data
 from models import Day
-from monte_carlo import simulate_mc_loop, state as mc_state
 
 
 #from rocket import get_rocket
@@ -14,7 +13,6 @@ from monte_carlo import simulate_mc_loop, state as mc_state
 async def lifespan(app: FastAPI):
     # Kick off the continuous simulation loop as soon as the app starts
     asyncio.create_task(simulate_loop())
-    asyncio.create_task(simulate_mc_loop())
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -41,10 +39,6 @@ def get_status():
     # Clients call this once per second (or however often you like)
     return state
 
-
-@app.get("/MC")
-def get_mc():
-    return mc_state
 
 if __name__ == "__main__":
     import uvicorn
