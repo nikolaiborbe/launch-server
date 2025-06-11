@@ -12,6 +12,15 @@ from converters import ts_to_weather
 g = 9.80665  # m/s²
 
 USER_AGENT = "myApp/0.1 you@example.com"    # required by api.met.no
+_ds_cache = {}
+
+def _get_dataset(path: str) -> xr.Dataset:
+    ds = _ds_cache.get(path)
+    if ds is None:
+        ds = xr.open_dataset(path)
+        _ds_cache[path] = ds
+    return ds
+
 
 def select_forecasts(lat: float, lon: float, *, timeout=10) -> list[Weather]:
     """Return six Weather objects:
@@ -77,12 +86,12 @@ def construct_environment(
     # --- fetch the current MET surface obs ---
     weather_list: list[Weather] = select_forecasts(lat, lon)
     env_list = []
+    
+    # Load the climatology dataset only once (cached internally by _get_dataset)
+    ds = _get_dataset(climatology_file)
 
-    # Load the climatology dataset only once instead of once per forecast.
-    ds = xr.open_dataset(climatology_file)
-    # numpy.datetime64 does not keep timezone information. Convert the launch
-    # time to UTC and drop the timezone before creating the numpy timestamp to
-    # avoid warnings about timezone handling.
+    # numpy.datetime64 doesn't carry tz info.  Convert to UTC, drop tz,
+    # then build the timestamp to avoid the warning.
     ts_utc = launch_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
     ts = np.datetime64(ts_utc)
 
