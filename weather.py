@@ -80,7 +80,11 @@ def construct_environment(
 
     # Load the climatology dataset only once instead of once per forecast.
     ds = xr.open_dataset(climatology_file)
-    ts = np.datetime64(launch_time.astimezone(ZoneInfo("UTC")))
+    # numpy.datetime64 does not keep timezone information. Convert the launch
+    # time to UTC and drop the timezone before creating the numpy timestamp to
+    # avoid warnings about timezone handling.
+    ts_utc = launch_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+    ts = np.datetime64(ts_utc)
 
     for w in weather_list:
         T_obs   = w.temperature      # °C
