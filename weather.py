@@ -73,14 +73,17 @@ def construct_environment(
     # --- fetch the current MET surface obs ---
     weather_list: list[Weather] = select_forecasts(lat, lon)
     env_list = []
-    for i in range(len(weather_list)):
-        T_obs   = weather_list[i].temperature      # °C
-        wspd    = weather_list[i].wind_speed           # m/s
-        wdir    = weather_list[i].wind_from_direction  # deg from north
 
-        # --- load & slice your reanalysis NetCDF ---
-        ds = xr.open_dataset(climatology_file)
-        ts = np.datetime64(launch_time.astimezone(ZoneInfo("UTC")))
+    # Load the climatology dataset only once instead of once per forecast.
+    ds = xr.open_dataset(climatology_file)
+    ts = np.datetime64(launch_time.astimezone(ZoneInfo("UTC")))
+
+    for w in weather_list:
+        T_obs   = w.temperature      # °C
+        wspd    = w.wind_speed       # m/s
+        wdir    = w.wind_from_direction  # deg from north
+
+        # --- slice the reanalysis NetCDF ---
         clim = ds.sel(
             time      = ts,
             latitude  = lat,
