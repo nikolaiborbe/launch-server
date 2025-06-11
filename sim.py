@@ -333,12 +333,12 @@ def worker(env: Environment) -> Data:
         "final_static_margin":    final_sm,
     }
 
-    t = np.arange(0, flight.t_final, 0.1)
+    t = np.arange(0, flight.t_final, 0.1).tolist()
     coords = np.column_stack([
         flight.x(t),
         flight.y(t),
         flight.z(t)
-    ])
+    ]).tolist()
 
     flight_data = FlightData(t, coords)
 
