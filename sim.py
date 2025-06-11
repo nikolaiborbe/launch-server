@@ -29,6 +29,24 @@ import warnings
 # ignore all FutureWarning messages
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+import xarray as xr
+
+# ------------------------------------------------------------------
+# Re‑use heavy assets instead of re‑loading them on every simulation
+# ------------------------------------------------------------------
+_THRUST_CURVE_BASE = np.loadtxt(
+    "inputs/rocketpyeng-mc.csv", delimiter=",", skiprows=1
+)
+
+_DATASET_CACHE: dict[str, xr.Dataset] = {}
+
+def _get_dataset(path: str) -> xr.Dataset:
+    """Return a cached xarray.Dataset for the given path."""
+    ds = _DATASET_CACHE.get(path)
+    if ds is None:
+        ds = xr.open_dataset(path)
+        _DATASET_CACHE[path] = ds
+    return ds
     
 
 df = pd.read_excel("Input_values.xlsx", index_col=1)
@@ -240,7 +258,7 @@ def worker(env: Environment) -> Data:
     )
 
     # Thrust
-    thrust_curve = np.loadtxt("inputs/rocketpyeng-mc.csv", delimiter=",", skiprows=1)
+    thrust_curve = _THRUST_CURVE_BASE.copy()
     thrust_curve[2, 0] = burnout_time - 0.5
     thrust_curve[3, 0] = burnout_time
 
@@ -343,7 +361,7 @@ def worker(env: Environment) -> Data:
         "final_static_margin":    final_sm,
     }
 
-    t = np.arange(0, flight.t_final, 0.1).tolist()
+    t = np.arange(0, flight.t_final, 0.5).tolist()
     coords = np.column_stack([
         flight.x(t),
         flight.y(t),
