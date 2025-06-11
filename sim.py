@@ -4,12 +4,21 @@ import zoneinfo
 import pandas as pd
 import numpy as np
 import datetime 
-from rocketpy import Environment, Rocket, Flight, LiquidMotor, CylindricalTank, MassFlowRateBasedTank, Fluid as RPFluid
+from rocketpy import (
+    Environment,
+    Rocket,
+    Flight,
+    LiquidMotor,
+    CylindricalTank,
+    MassFlowRateBasedTank,
+    Fluid as RPFluid,
+)
 from pyfluids import FluidsList, Mixture, Input, Fluid as PyFluid
 from zoneinfo import ZoneInfo
 from models import Day, Data, Weather, FlightData
 import os
 import contextlib
+import io
 import csv
 from time import process_time
 
@@ -139,7 +148,8 @@ def worker(env: Environment) -> Data:
     # Now build the geometries with plain floats
     fuel_geom = CylindricalTank(fuel_radius, fuel_length, spherical_caps=False)
 
-    n2_geom   = CylindricalTank(n2_radius,   n2_length,   spherical_caps=True)
+    with open(os.devnull, "w") as devnull, contextlib.redirect_stdout(devnull):
+        n2_geom = CylindricalTank(n2_radius, n2_length, spherical_caps=True)
     # Unpack the raw floats
     ox_radius = analysis_parameters["ox_tank_radius"]
     ox_length = analysis_parameters["ox_tank_length"]
