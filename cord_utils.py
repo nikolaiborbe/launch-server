@@ -1,8 +1,16 @@
 # coord_utils.py
 import math
 
-def dms_to_dd(degrees, minutes, seconds):
-    return degrees + minutes / 60 + seconds / 3600
+def dms_to_dd(degrees: float, minutes: float, seconds: float) -> float:
+    """Convert coordinates from degrees/minutes/seconds to decimal degrees.
+
+    The sign of ``degrees`` determines the overall sign of the result.  This
+    ensures that ``dms_to_dd(-1, 30, 0)`` correctly returns ``-1.5`` instead of
+    ``-0.5``.
+    """
+
+    sign = -1 if degrees < 0 else 1
+    return sign * (abs(degrees) + minutes / 60 + seconds / 3600)
 
 def latlon_to_xy(lat_ref, lon_ref, coord):
     # Earth's radius in meters
