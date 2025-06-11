@@ -95,29 +95,42 @@ def construct_environment(
     ts_utc = launch_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
     ts = np.datetime64(ts_utc)
 
+    # ------------------------------------------------------------------
+    # The climatology slice at (ts, lat, lon) is identical for every
+    # Weather snapshot, so we compute it once to avoid re‑allocating the
+    # same arrays (height, pressure, base‑temperature) in each loop
+    # iteration.  This saves both CPU and per‑request memory.
+    # ------------------------------------------------------------------
+    clim = ds.sel(
+        time      = ts,
+        latitude  = lat,
+        longitude = lon,
+        method    = "nearest"
+    )
+
+    levels_hpa   = clim["level"].values            # [hPa]
+    pressure_pa  = levels_hpa * 100.0              # → Pa
+
+    geopot       = clim["z"].values                # m²/s²
+    height       = (geopot / g).astype(float)      # m
+
+    T_profile_base = clim["t"].values              # K (climatology)
+
+    # Pressure profile is invariant across weather_list entries
+    pressure_profile = [
+        (float(h), float(p))
+        for h, p in zip(height, pressure_pa)
+    ]
+
     for w in weather_list:
         T_obs   = w.temperature      # °C
         wspd    = w.wind_speed       # m/s
         wdir    = w.wind_from_direction  # deg from north
 
-        # --- slice the reanalysis NetCDF ---
-        clim = ds.sel(
-            time      = ts,
-            latitude  = lat,
-            longitude = lon,
-            method    = "nearest"
-        )
-
-        # --- extract and convert coordinates & variables ---
-        levels_hpa   = clim["level"].values            # [hPa]
-        pressure_pa  = levels_hpa * 100.0              # → Pa
-
-        geopot       = clim["z"].values                # m²/s²
-        height       = (geopot / g).astype(float)      # m
-
-        T_profile    = clim["t"].values                # K
-        u_profile    = clim["u"].values                # m/s
-        v_profile    = clim["v"].values                # m/s
+        # --- reuse the pre‑computed climatology slice ---
+        T_profile = T_profile_base
+        u_profile = clim["u"].values  # still varies with time? kept for completeness
+        v_profile = clim["v"].values
 
         # --- apply surface‐temp anomaly (MET in °C → K) ---
         T_obs_K      = T_obs + 273.15
@@ -134,12 +147,6 @@ def construct_environment(
         v0    = -wspd * np.cos(θ)
         wind_u_profile = [(float(h), float(u0)) for h in height]
         wind_v_profile = [(float(h), float(v0)) for h in height]
-
-        # --- pressure profile ---
-        pressure_profile = [
-            (float(h), float(p))
-            for h, p in zip(height, pressure_pa)
-        ]
 
         # --- construct the RocketPy Environment ---
         env = Environment(
