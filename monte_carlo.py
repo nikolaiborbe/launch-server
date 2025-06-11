@@ -4,11 +4,23 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
-from rocketpy import Environment, Rocket, Flight, LiquidMotor, CylindricalTank, MassFlowRateBasedTank, Fluid as RPFluid
+from rocketpy import (
+    Environment,
+    Rocket,
+    Flight,
+    LiquidMotor,
+    CylindricalTank,
+    MassFlowRateBasedTank,
+    Fluid as RPFluid,
+)
 from pyfluids import FluidsList, Mixture, Input, Fluid as PyFluid
+
+import contextlib
+import io
 
 from models import Day, Data, Weather, FlightData
 from weather import construct_environment
+import os
 
 # ---------------------------------------------------------------------------
 # Read input parameters exactly like sim.py
@@ -118,11 +130,12 @@ def worker_mc(env: Environment, inclination: float, heading: float) -> Data:
         analysis_parameters["ox_tank_length"],
         spherical_caps=False,
     )
-    n2_geom = CylindricalTank(
-        analysis_parameters["n2_tank_radius"],
-        analysis_parameters["n2_tank_length"],
-        spherical_caps=True,
-    )
+    with open(os.devnull, "w") as devnull, contextlib.redirect_stdout(devnull):
+        n2_geom = CylindricalTank(
+            analysis_parameters["n2_tank_radius"],
+            analysis_parameters["n2_tank_length"],
+            spherical_caps=True,
+        )
 
     oxidizer = RPFluid(name="N2O", density=N2O.density)
     fuel = RPFluid(name="fuel", density=fuel_mix.density)
