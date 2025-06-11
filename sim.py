@@ -21,6 +21,7 @@ import contextlib
 import io
 import csv
 from time import process_time
+import gc  # for explicit post‑simulation cleanup
 
 from weather import construct_environment
 
@@ -371,6 +372,13 @@ def worker(env: Environment) -> Data:
     flight_data = FlightData(t, coords)
 
     res = Data(result["max_velocity"], result["apogee_time"], result["apogee_altitude"], result["apogee_x"], result["apogee_y"], result["impact_x"], result["impact_y"], result["impact_velocity"], flight_data)
+
+    # --------------------------------------------------------------
+    # Free large intermediate objects so their memory can be returned
+    # before the next iteration; this helps keep RSS flat over time.
+    # --------------------------------------------------------------
+    del flight, heimdal, motor, fuel_tank, ox_tank, n2_tank
+    gc.collect()
 
     return res
 
