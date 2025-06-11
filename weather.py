@@ -12,6 +12,15 @@ from converters import ts_to_weather
 g = 9.80665  # m/s²
 
 USER_AGENT = "myApp/0.1 you@example.com"    # required by api.met.no
+_ds_cache = {}
+
+def _get_dataset(path: str) -> xr.Dataset:
+    ds = _ds_cache.get(path)
+    if ds is None:
+        ds = xr.open_dataset(path)
+        _ds_cache[path] = ds
+    return ds
+
 
 def select_forecasts(lat: float, lon: float, *, timeout=10) -> list[Weather]:
     """Return six Weather objects:
@@ -79,7 +88,7 @@ def construct_environment(
     env_list = []
 
     # Load the climatology dataset only once instead of once per forecast.
-    ds = xr.open_dataset(climatology_file)
+    ds = _get_dataset(climatology_file)
     ts = np.datetime64(launch_time.astimezone(ZoneInfo("UTC")))
 
     for w in weather_list:
