@@ -7,7 +7,7 @@ import datetime
 from rocketpy import Environment, Rocket, Flight, LiquidMotor, CylindricalTank, MassFlowRateBasedTank, Fluid as RPFluid
 from pyfluids import FluidsList, Mixture, Input, Fluid as PyFluid
 from zoneinfo import ZoneInfo
-from models import Day, Data, Weather
+from models import Day, Data, Weather, FlightData
 import os
 import contextlib
 import csv
@@ -333,8 +333,16 @@ def worker(env: Environment) -> Data:
         "final_static_margin":    final_sm,
     }
 
+    t = np.arange(0, flight.t_final, 0.1)
+    coords = np.column_stack([
+        flight.x(t),
+        flight.y(t),
+        flight.z(t)
+    ])
 
-    res = Data(result["max_velocity"], result["apogee_time"], result["apogee_altitude"], result["apogee_x"], result["apogee_y"], result["impact_x"], result["impact_y"], result["impact_velocity"])
+    flight_data = FlightData(t, coords)
+
+    res = Data(result["max_velocity"], result["apogee_time"], result["apogee_altitude"], result["apogee_x"], result["apogee_y"], result["impact_x"], result["impact_y"], result["impact_velocity"], flight_data)
 
     return res
 

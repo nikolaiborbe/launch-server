@@ -2,6 +2,11 @@ from dataclasses import dataclass
 from datetime import datetime
 
 @dataclass(slots=True)
+class FlightData:
+    time: list
+    coords: list
+
+@dataclass(slots=True)
 class Data:
     max_velocity: float
     apogee_time: float
@@ -11,6 +16,7 @@ class Data:
     impact_x: float
     impact_y: float
     impact_velocity: float
+    flight_data: FlightData
 
 
 @dataclass(slots=True)
