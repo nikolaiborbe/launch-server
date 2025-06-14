@@ -42,10 +42,11 @@ _THRUST_CURVE_BASE = np.loadtxt(
 _DATASET_CACHE: dict[str, xr.Dataset] = {}
 
 def _get_dataset(path: str) -> xr.Dataset:
-    """Return a cached xarray.Dataset for the given path."""
+    """Return a cached xarray.Dataset with data loaded into memory."""
     ds = _DATASET_CACHE.get(path)
     if ds is None:
-        ds = xr.open_dataset(path)
+        with xr.open_dataset(path) as tmp:
+            ds = tmp.load()
         _DATASET_CACHE[path] = ds
     return ds
     
@@ -407,7 +408,7 @@ def get_data() -> list[Day]:
         launch_time=datetime.datetime.now(ZoneInfo("Europe/Oslo")),
         climatology_file="inputs/MC_env.nc"
     )
-    for i in range(len(weather)): 
+    for i in range(len(weather)):
         data: Data  = worker(env[i])
         cur_weather: Weather = Weather(
             time=weather[i].time,
@@ -419,7 +420,10 @@ def get_data() -> list[Day]:
         )
         day: Day = Day(data, cur_weather)
         ans.append(day)
-    return ans 
+    # Explicitly drop references to release memory before the next iteration
+    del env, weather
+    gc.collect()
+    return ans
 
 if __name__ == "__main__": 
     pass
