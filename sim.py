@@ -32,27 +32,6 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 import xarray as xr
 
-# ------------------------------------------------------------------
-# Monkey‑patch xr.open_dataset so every caller (including functions
-# inside rocketpy/weather) re‑uses a single in‑memory copy of large
-# NetCDF files.  This eliminates the per‑iteration leak that was
-# caused by repeatedly reading + materialising the same dataset.
-# ------------------------------------------------------------------
-_ORIG_OPEN_DATASET = xr.open_dataset
-
-def _cached_open_dataset(path, *args, **kwargs):
-    # Only cache ordinary filesystem paths; fall back for file‑like objs.
-    if isinstance(path, str):
-        ds = _DATASET_CACHE.get(path)
-        if ds is None:
-            if len(_DATASET_CACHE) >= _MAX_DS_CACHE:
-                _DATASET_CACHE.pop(next(iter(_DATASET_CACHE)))
-            ds = _ORIG_OPEN_DATASET(path, *args, **kwargs).load()
-            _DATASET_CACHE[path] = ds
-        return ds
-    return _ORIG_OPEN_DATASET(path, *args, **kwargs)
-
-xr.open_dataset = _cached_open_dataset
 
 # ------------------------------------------------------------------
 # Re‑use heavy assets instead of re‑loading them on every simulation
@@ -60,19 +39,6 @@ xr.open_dataset = _cached_open_dataset
 _THRUST_CURVE_BASE = np.loadtxt(
     "inputs/rocketpyeng-mc.csv", delimiter=",", skiprows=1
 )
-
-_DATASET_CACHE: dict[str, xr.Dataset] = {}
-_MAX_DS_CACHE = 4
-
-def _get_dataset(path: str) -> xr.Dataset:
-    ds = _DATASET_CACHE.get(path)
-    if ds is None:
-        if len(_DATASET_CACHE) >= _MAX_DS_CACHE:
-            _DATASET_CACHE.pop(next(iter(_DATASET_CACHE)))
-        with xr.open_dataset(path) as tmp:
-            ds = tmp.load()
-        _DATASET_CACHE[path] = ds
-    return ds
     
 
 df = pd.read_excel("Input_values.xlsx", index_col=1)

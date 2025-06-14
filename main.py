@@ -25,31 +25,18 @@ state: list[Day] = []
 async def simulate_loop():
     global state
     while True:
-        # Run the full‑fidelity simulation
-        raw_state = get_data()
+        # Run the simulation and immediately slim the results in place
+        state = get_data()
 
-        # ----------------------------------------------------------
-        # Strip heavy per‑point time‑series before exposing via API
-        # so that concurrent /status calls don't duplicate megabytes
-        # of arrays in RAM.
-        # ----------------------------------------------------------
-        slim_state: list[Day] = []
-        for day in raw_state:
-            # Mutate in place: drop the large FlightData arrays but keep scalars
+        for day in state:
+            # Drop FlightData entirely; keep only summary scalars that
+            # the API clients actually consume.
             try:
-                fd = day.data.flight_data
-                # Remove big arrays to minimise memory footprint
-                fd.t = []
-                fd.coords = []
+                day.data.flight_data = None
             except AttributeError:
-                # Model layout changed; ignore gracefully
                 pass
-            slim_state.append(day)
 
-        # Atomically swap the shared reference
-        state = slim_state
-
-        # Force a GC cycle to promptly release orphaned arrays
+        # Trigger GC to reclaim the large arrays we just detached
         gc.collect()
         await asyncio.sleep(1)
 

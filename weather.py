@@ -48,7 +48,9 @@ def _precompute_profiles(
     Results are cached so repeated calls for the same (lat, lon, ts)
     reuse the same underlying NumPy arrays.
     """
-    key = (round(lat, 4), round(lon, 4), ts)
+    # Quantise ts to the nearest timestamp actually present in the dataset
+    nearest_ts = ds["time"].sel(time=ts, method="nearest").values.item()
+    key = (round(lat, 4), round(lon, 4), nearest_ts)
     prof = _ENV_PROFILE_CACHE.get(key)
     if prof is None:
         # Evict oldest cached profile when exceeding the size limit
@@ -56,7 +58,7 @@ def _precompute_profiles(
             _ENV_PROFILE_CACHE.pop(next(iter(_ENV_PROFILE_CACHE)))
 
         clim = ds.sel(
-            time=ts,
+            time=nearest_ts,
             latitude=lat,
             longitude=lon,
             method="nearest"
