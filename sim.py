@@ -45,6 +45,8 @@ def _cached_open_dataset(path, *args, **kwargs):
     if isinstance(path, str):
         ds = _DATASET_CACHE.get(path)
         if ds is None:
+            if len(_DATASET_CACHE) >= _MAX_DS_CACHE:
+                _DATASET_CACHE.pop(next(iter(_DATASET_CACHE)))
             ds = _ORIG_OPEN_DATASET(path, *args, **kwargs).load()
             _DATASET_CACHE[path] = ds
         return ds
@@ -60,10 +62,13 @@ _THRUST_CURVE_BASE = np.loadtxt(
 )
 
 _DATASET_CACHE: dict[str, xr.Dataset] = {}
+_MAX_DS_CACHE = 4
 
 def _get_dataset(path: str) -> xr.Dataset:
     ds = _DATASET_CACHE.get(path)
     if ds is None:
+        if len(_DATASET_CACHE) >= _MAX_DS_CACHE:
+            _DATASET_CACHE.pop(next(iter(_DATASET_CACHE)))
         with xr.open_dataset(path) as tmp:
             ds = tmp.load()
         _DATASET_CACHE[path] = ds
