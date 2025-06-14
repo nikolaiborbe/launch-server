@@ -15,9 +15,11 @@ USER_AGENT = "myApp/0.1 you@example.com"    # required by api.met.no
 _ds_cache = {}
 
 def _get_dataset(path: str) -> xr.Dataset:
+    """Return a cached xarray.Dataset with data loaded into memory."""
     ds = _ds_cache.get(path)
     if ds is None:
-        ds = xr.open_dataset(path)
+        with xr.open_dataset(path) as tmp:
+            ds = tmp.load()
         _ds_cache[path] = ds
     return ds
 
