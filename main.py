@@ -25,9 +25,31 @@ state: list[Day] = []
 async def simulate_loop():
     global state
     while True:
-        state = get_data()
-        # Force a full garbage collection cycle after each simulation run
-        # to ensure heavy objects from RocketPy are released promptly.
+        # Run the full‑fidelity simulation
+        raw_state = get_data()
+
+        # ----------------------------------------------------------
+        # Strip heavy per‑point time‑series before exposing via API
+        # so that concurrent /status calls don't duplicate megabytes
+        # of arrays in RAM.
+        # ----------------------------------------------------------
+        slim_state: list[Day] = []
+        for day in raw_state:
+            # Mutate in place: drop the large FlightData arrays but keep scalars
+            try:
+                fd = day.data.flight_data
+                # Remove big arrays to minimise memory footprint
+                fd.t = []
+                fd.coords = []
+            except AttributeError:
+                # Model layout changed; ignore gracefully
+                pass
+            slim_state.append(day)
+
+        # Atomically swap the shared reference
+        state = slim_state
+
+        # Force a GC cycle to promptly release orphaned arrays
         gc.collect()
         await asyncio.sleep(1)
 

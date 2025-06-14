@@ -13,15 +13,62 @@ g = 9.80665  # m/s²
 
 USER_AGENT = "myApp/0.1 you@example.com"    # required by api.met.no
 _ds_cache = {}
+_MAX_DS_CACHE = 1            # keep only one climatology dataset loaded
+_ENV_PROFILE_CACHE = {}      # cache of derived profiles keyed by (lat, lon, ts)
 
 def _get_dataset(path: str) -> xr.Dataset:
-    """Return a cached xarray.Dataset with data loaded into memory."""
+    """
+    Return a cached, fully‑loaded xarray.Dataset.  If the cache already
+    holds a different file and the size limit would be exceeded, evict
+    the oldest entry so RSS stays bounded.
+    """
+    # Evict if cache full and new path not present
+    if path not in _ds_cache and len(_ds_cache) >= _MAX_DS_CACHE:
+        _ds_cache.pop(next(iter(_ds_cache)))
+
     ds = _ds_cache.get(path)
     if ds is None:
         with xr.open_dataset(path) as tmp:
             ds = tmp.load()
         _ds_cache[path] = ds
     return ds
+
+def _precompute_profiles(
+    lat: float,
+    lon: float,
+    ts: np.datetime64,
+    ds: xr.Dataset,
+) -> dict:
+    """
+    Return a dict with keys:
+      - height: 1‑D np.ndarray[float32]
+      - pressure_profile: list[(height, Pa)]
+      - T_profile_base: 1‑D np.ndarray[float32]
+    Results are cached so repeated calls for the same (lat, lon, ts)
+    reuse the same underlying NumPy arrays.
+    """
+    key = (round(lat, 4), round(lon, 4), ts)
+    prof = _ENV_PROFILE_CACHE.get(key)
+    if prof is None:
+        clim = ds.sel(
+            time=ts,
+            latitude=lat,
+            longitude=lon,
+            method="nearest"
+        )
+        height = (clim["z"].values.astype(np.float32) / g).astype(np.float32)
+        pressure_pa = (clim["level"].values.astype(np.float32) * 100.0).astype(np.float32)
+        T_profile_base = clim["t"].values.astype(np.float32)
+
+        prof = {
+            "height": height,
+            "pressure_profile": [
+                (float(h), float(p)) for h, p in zip(height, pressure_pa)
+            ],
+            "T_profile_base": T_profile_base,
+        }
+        _ENV_PROFILE_CACHE[key] = prof
+    return prof
 
 
 def select_forecasts(lat: float, lon: float, *, timeout=10) -> list[Weather]:
@@ -89,40 +136,20 @@ def construct_environment(
     weather_list: list[Weather] = select_forecasts(lat, lon)
     env_list = []
     
-    # Load the climatology dataset only once (cached internally by _get_dataset)
+    # --------------------------------------------------------------
+    # Pull the dataset once, then re‑use derived height/pressure/T
+    # profiles via _precompute_profiles so we don’t re‑allocate them
+    # on every call (prevents memory creep).
+    # --------------------------------------------------------------
     ds = _get_dataset(climatology_file)
 
-    # numpy.datetime64 doesn't carry tz info.  Convert to UTC, drop tz,
-    # then build the timestamp to avoid the warning.
     ts_utc = launch_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
     ts = np.datetime64(ts_utc)
 
-    # ------------------------------------------------------------------
-    # The climatology slice at (ts, lat, lon) is identical for every
-    # Weather snapshot, so we compute it once to avoid re‑allocating the
-    # same arrays (height, pressure, base‑temperature) in each loop
-    # iteration.  This saves both CPU and per‑request memory.
-    # ------------------------------------------------------------------
-    clim = ds.sel(
-        time      = ts,
-        latitude  = lat,
-        longitude = lon,
-        method    = "nearest"
-    )
-    # Use float32 to halve memory footprint; precision is ±0.01 Pa / m, ample.
-    levels_hpa   = clim["level"].values.astype(np.float32)   # [hPa]
-    pressure_pa  = (levels_hpa * 100.0).astype(np.float32)   # → Pa
-
-    geopot       = clim["z"].values.astype(np.float32)       # m²/s²
-    height       = (geopot / g).astype(np.float32)           # m
-
-    T_profile_base = clim["t"].values.astype(np.float32)      # K (climatology)
-
-    # Pressure profile is invariant across weather_list entries
-    pressure_profile = [
-        (float(h), float(p))
-        for h, p in zip(height, pressure_pa)
-    ]
+    prof = _precompute_profiles(lat, lon, ts, ds)
+    height            = prof["height"]
+    pressure_profile  = prof["pressure_profile"]
+    T_profile_base    = prof["T_profile_base"]
 
     for w in weather_list:
         T_obs   = w.temperature      # °C
