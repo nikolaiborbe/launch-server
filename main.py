@@ -29,10 +29,10 @@ async def simulate_loop():
         state = get_data()
 
         for day in state:
-            # Drop FlightData entirely; keep only summary scalars that
-            # the API clients actually consume.
             try:
-                day.data.flight_data = None
+                fd = day.data.flight_data
+                fd.t = []
+                fd.coords = []
             except AttributeError:
                 pass
 
