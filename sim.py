@@ -33,6 +33,26 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import xarray as xr
 
 # ------------------------------------------------------------------
+# Monkey‑patch xr.open_dataset so every caller (including functions
+# inside rocketpy/weather) re‑uses a single in‑memory copy of large
+# NetCDF files.  This eliminates the per‑iteration leak that was
+# caused by repeatedly reading + materialising the same dataset.
+# ------------------------------------------------------------------
+_ORIG_OPEN_DATASET = xr.open_dataset
+
+def _cached_open_dataset(path, *args, **kwargs):
+    # Only cache ordinary filesystem paths; fall back for file‑like objs.
+    if isinstance(path, str):
+        ds = _DATASET_CACHE.get(path)
+        if ds is None:
+            ds = _ORIG_OPEN_DATASET(path, *args, **kwargs).load()
+            _DATASET_CACHE[path] = ds
+        return ds
+    return _ORIG_OPEN_DATASET(path, *args, **kwargs)
+
+xr.open_dataset = _cached_open_dataset
+
+# ------------------------------------------------------------------
 # Re‑use heavy assets instead of re‑loading them on every simulation
 # ------------------------------------------------------------------
 _THRUST_CURVE_BASE = np.loadtxt(
@@ -42,10 +62,11 @@ _THRUST_CURVE_BASE = np.loadtxt(
 _DATASET_CACHE: dict[str, xr.Dataset] = {}
 
 def _get_dataset(path: str) -> xr.Dataset:
-    """Return a cached xarray.Dataset for the given path."""
+    """Return a cached xarray.Dataset fully loaded into memory."""
     ds = _DATASET_CACHE.get(path)
     if ds is None:
-        ds = xr.open_dataset(path)
+        with xr.open_dataset(path) as tmp:
+            ds = tmp.load()
         _DATASET_CACHE[path] = ds
     return ds
     
@@ -405,21 +426,27 @@ def get_data() -> list[Day]:
         lat=df.loc["latitude"][1],
         lon=df.loc["longitude"][1],
         launch_time=datetime.datetime.now(ZoneInfo("Europe/Oslo")),
-        climatology_file="inputs/MC_env.nc"
+        climatology_file="inputs/MC_env.nc",
     )
-    for i in range(len(weather)): 
-        data: Data  = worker(env[i])
-        cur_weather: Weather = Weather(
-            time=weather[i].time,
-            temperature=weather[i].temperature,
-            pressure=weather[i].pressure,
-            wind_speed=weather[i].wind_speed,
-            wind_from_direction=weather[i].wind_from_direction,
-            humidity=weather[i].humidity,
-        )
-        day: Day = Day(data, cur_weather)
-        ans.append(day)
-    return ans 
+
+    try:
+        for i in range(len(weather)):
+            data: Data = worker(env[i])
+            cur_weather = Weather(
+                time=weather[i].time,
+                temperature=weather[i].temperature,
+                pressure=weather[i].pressure,
+                wind_speed=weather[i].wind_speed,
+                wind_from_direction=weather[i].wind_from_direction,
+                humidity=weather[i].humidity,
+            )
+            ans.append(Day(data, cur_weather))
+    finally:
+        # Ensure heavy objects are released even if the loop errors.
+        del env, weather
+        gc.collect()
+
+    return ans
 
 if __name__ == "__main__": 
     pass
