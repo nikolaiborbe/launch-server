@@ -14,8 +14,7 @@ g = 9.80665  # m/s²
 USER_AGENT = "myApp/0.1 you@example.com"    # required by api.met.no
 _ds_cache = {}
 _MAX_DS_CACHE = 1            # keep only one climatology dataset loaded
-_ENV_PROFILE_CACHE = {}
-_MAX_ENV_PROFILE_CACHE = 4   # bound the number of cached profiles to avoid OOM
+_ENV_PROFILE_CACHE = {}      # cache of derived profiles keyed by (lat, lon, ts)
 
 def _get_dataset(path: str) -> xr.Dataset:
     """
@@ -48,17 +47,11 @@ def _precompute_profiles(
     Results are cached so repeated calls for the same (lat, lon, ts)
     reuse the same underlying NumPy arrays.
     """
-    # Quantise ts to the nearest timestamp actually present in the dataset
-    nearest_ts = ds["time"].sel(time=ts, method="nearest").values.item()
-    key = (round(lat, 4), round(lon, 4), nearest_ts)
+    key = (round(lat, 4), round(lon, 4), ts)
     prof = _ENV_PROFILE_CACHE.get(key)
     if prof is None:
-        # Evict oldest cached profile when exceeding the size limit
-        if len(_ENV_PROFILE_CACHE) >= _MAX_ENV_PROFILE_CACHE:
-            _ENV_PROFILE_CACHE.pop(next(iter(_ENV_PROFILE_CACHE)))
-
         clim = ds.sel(
-            time=nearest_ts,
+            time=ts,
             latitude=lat,
             longitude=lon,
             method="nearest"
