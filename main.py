@@ -1,4 +1,5 @@
 import asyncio
+import gc
 from urllib import response
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -25,6 +26,9 @@ async def simulate_loop():
     global state
     while True:
         state = get_data()
+        # Force a full garbage collection cycle after each simulation run
+        # to ensure heavy objects from RocketPy are released promptly.
+        gc.collect()
         await asyncio.sleep(1)
 
 

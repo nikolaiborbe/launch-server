@@ -62,7 +62,11 @@ _THRUST_CURVE_BASE = np.loadtxt(
 _DATASET_CACHE: dict[str, xr.Dataset] = {}
 
 def _get_dataset(path: str) -> xr.Dataset:
+<<<<<<< HEAD
     """Return a cached xarray.Dataset fully loaded into memory."""
+=======
+    """Return a cached xarray.Dataset with data loaded into memory."""
+>>>>>>> refs/remotes/origin/main
     ds = _DATASET_CACHE.get(path)
     if ds is None:
         with xr.open_dataset(path) as tmp:
@@ -445,6 +449,7 @@ def get_data() -> list[Day]:
         # Ensure heavy objects are released even if the loop errors.
         del env, weather
         gc.collect()
+
 
     return ans
 
